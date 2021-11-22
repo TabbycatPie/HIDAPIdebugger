@@ -17,5 +17,7 @@ public:
 
 private:
     Ui::HIDAPIdebugger *ui;
+    void HID_enum();
+
 };
 #endif // HIDAPIDEBUGGER_H

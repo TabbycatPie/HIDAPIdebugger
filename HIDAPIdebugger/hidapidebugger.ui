@@ -14,7 +14,7 @@
    <string>HIDAPIdebugger</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="btn_enum">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -27,7 +27,7 @@
      <string>enum</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_2">
+   <widget class="QPushButton" name="btn_wirte">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -40,7 +40,7 @@
      <string>write</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_3">
+   <widget class="QPushButton" name="btn_open">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -53,7 +53,7 @@
      <string>open</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_4">
+   <widget class="QPushButton" name="btn_close">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -66,7 +66,7 @@
      <string>close</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_5">
+   <widget class="QPushButton" name="btn_read">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -79,7 +79,7 @@
      <string>read</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_6">
+   <widget class="QPushButton" name="btn_test">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -92,7 +92,7 @@
      <string>test</string>
     </property>
    </widget>
-   <widget class="QTextBrowser" name="textBrowser">
+   <widget class="QTextBrowser" name="tv_log">
     <property name="geometry">
      <rect>
       <x>110</x>

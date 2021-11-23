@@ -28,17 +28,20 @@ QString getDinfoString(hid_device_info* dinfo){
     temp +="Interface number:" + QString::number(dinfo->interface_number) + "\n";
     temp +="Serial    number:" + QString::fromWCharArray(dinfo->serial_number) + "\n";
     temp +="Usage     number:" + QString::number(dinfo->usage) + "\n";
-    temp +="Usagepage number:" + QString::number(dinfo->usage_page) + "\n";
-
+    temp +="Usagepage number:" + QString::number(dinfo->usage_page) + "\n\n";
+    if(dinfo->next == nullptr){
+        temp += "\n";
+    }
     return temp;
 }
 void HIDAPIdebugger::HID_enum()
 {
     hid_device_info* d_info = hid_enumerate(0x5131,0x2019);
-    while(d_info->next != nullptr){
-        getDinfoString(d_info);
+    QString log = "";
+    while(d_info != nullptr){
+        log += getDinfoString(d_info);
         d_info = d_info->next;
     }
-
+    ui->tv_log->setText(log);
 }
 

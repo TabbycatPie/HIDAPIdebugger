@@ -13,13 +13,14 @@ SOURCES += \
     hidapidebugger.cpp
 
 HEADERS += \
-    hidapi.h \
-    hidapidebugger.h
+    hidapidebugger.h \
+    libusb.h
 
 FORMS += \
     hidapidebugger.ui
 
-LIBS += -L$$_PRO_FILE_PWD_/  -l hidapi
+LIBS += -L$$_PRO_FILE_PWD_/  libusb-1.0
+
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

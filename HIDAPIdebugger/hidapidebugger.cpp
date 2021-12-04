@@ -25,7 +25,8 @@ HIDAPIdebugger::~HIDAPIdebugger()
 
 int test(){
     // 初使化上下文
-        int nRet = libusb_init(NULL);
+        libusb_context *ctx = NULL; //a libusb session
+        int nRet = libusb_init(&ctx);
         if (nRet < 0)
         {
             qDebug() << "libusb_init(NULL) failed:[%s] \n" << libusb_strerror(nRet);
@@ -34,67 +35,79 @@ int test(){
 
         qDebug() << ("libusb_init(NULL) ok \n");
 
+        libusb_set_debug(ctx, LIBUSB_LOG_LEVEL_INFO); //set verbosity level to 3, as suggested in the documentation
+
         // 打开指定厂商的某类产品
-        libusb_device_handle* pHandle = libusb_open_device_with_vid_pid(NULL, 0x5131, 0x2019);
+        libusb_device_handle* pHandle = libusb_open_device_with_vid_pid(ctx, 0x5131, 0x2019);
         if (pHandle == NULL)
         {
             qDebug() << ("libusb_open_device_with_vid_pid(0x5131, 0x2019) failed \n");
-            libusb_exit(NULL);
+            libusb_exit(ctx);
             return -1;
         }
 
         qDebug() << ("libusb_open_device_with_vid_pid(0x5131, 0x2019) ok \n");
 
-        // 声明使用第3个接口
-        nRet = libusb_claim_interface(pHandle, 2);
+        //find out if the interface is occupated
+        if(int act = libusb_kernel_driver_active(pHandle, 1) == 1) { //find out if kernel driver is attached
+            qDebug() <<("Kernel Driver Active\n");
+            if(libusb_detach_kernel_driver(pHandle, 1) == 0) //detach it
+                qDebug() <<("Kernel Driver Detached!\n");
+            else
+                qDebug() << "Kernel Driver detach fail.\n";
+        }else
+             qDebug() <<"Kernel Driver is NOT active:" << act;
+
+        // 声明使用第2个接口
+        nRet = libusb_claim_interface(pHandle, 1);
         if (nRet < 0)
         {
-            qDebug() << "libusb_claim_interface(3) failed:" << libusb_strerror(nRet);
+            qDebug() << "libusb_claim_interface(1) failed:" << libusb_strerror(nRet);
             libusb_close(pHandle);
-            libusb_exit(NULL);
+            libusb_exit(ctx);
             return -1;
         }
 
-        qDebug() << ("libusb_claim_interface(0) ok \n");
+        qDebug() << ("libusb_claim_interface(1) ok \n");
 
         // 向指定端点发送数据
         char sBuf[] = "1234567890";
         int nActualBytes =0;
-        nRet = libusb_bulk_transfer(pHandle, 0x00, (unsigned char *)sBuf, strlen(sBuf), &nActualBytes, 1000);
+        nRet = libusb_interrupt_transfer(pHandle, 0x02, (unsigned char *)sBuf, strlen(sBuf), &nActualBytes, 1000);
         if (nRet < 0)
         {
-            qDebug() << "libusb_bulk_transfer(0x03) write failed:" << libusb_strerror(nRet) << nRet;
-            libusb_release_interface(pHandle, 0);
+            qDebug() << "libusb_interrupt_transfer(0x02) write failed:" << libusb_strerror(nRet) << nRet;
+            libusb_release_interface(pHandle, 1);
             libusb_close(pHandle);
-            libusb_exit(NULL);
+            libusb_exit(ctx);
             return -1;
         }
 
-        qDebug() << ("libusb_bulk_transfer(0x01) write size:[%d] \n", nActualBytes);
+        qDebug() << ("libusb_interrupt_transfer(0x02) write size:[%d] \n", nActualBytes);
 
         // 从指定端点接收数据
         char sBuf2[128] = {0};
         nActualBytes = 0;
-        nRet = libusb_bulk_transfer(pHandle, 0x00, (unsigned char *)sBuf2, sizeof(sBuf2), &nActualBytes, 1000);
+        nRet = libusb_interrupt_transfer(pHandle, 0x82, (unsigned char *)sBuf2, sizeof(sBuf2), &nActualBytes, 1000);
         if (nRet < 0)
         {
-            qDebug() << "libusb_bulk_transfer(0x81) read failed:[%s] \n" << libusb_strerror(nRet);
-            libusb_release_interface(pHandle, 0);
+            qDebug() << "libusb_interrupt_transfer(0x82) read failed:[%s] \n" << libusb_strerror(nRet);
+            libusb_release_interface(pHandle, 1);
             libusb_close(pHandle);
-            libusb_exit(NULL);
+            libusb_exit(ctx);
             return -1;
         }
 
-        qDebug() << "libusb_bulk_transfer(0x81) read size:[%d] \n" << nActualBytes;
+        qDebug() << "libusb_interrupt_transfer(0x81) read size:[%d] \n" << nActualBytes;
 
-        // 释放第1个接口
-        libusb_release_interface(pHandle, 0);
+        // 释放第2个接口
+        libusb_release_interface(pHandle, 1);
 
         // 关闭设备
         libusb_close(pHandle);
 
         // 释放上下文
-        libusb_exit(NULL);
+        libusb_exit(ctx);
 
         return 0;
 }

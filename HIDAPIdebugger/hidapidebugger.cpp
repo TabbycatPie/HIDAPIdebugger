@@ -12,16 +12,14 @@ HIDAPIdebugger::HIDAPIdebugger(QWidget *parent)
     connect(ui->btn_enum,&QPushButton::clicked,this,[=]{
         HID_enum();
     });
+    connect(ui->btn_test,&QPushButton::clicked,this,[=]{
+        HID_test();
+    });
 }
 
 HIDAPIdebugger::~HIDAPIdebugger()
 {
     delete ui;
-}
-
-int HIDAPIdebugger::getAllDevsNum(){
-
-
 }
 
 
@@ -48,7 +46,7 @@ int test(){
         qDebug() << ("libusb_open_device_with_vid_pid(0x5131, 0x2019) ok \n");
 
         // 声明使用第3个接口
-        nRet = libusb_claim_interface(pHandle, 3);
+        nRet = libusb_claim_interface(pHandle, 2);
         if (nRet < 0)
         {
             qDebug() << "libusb_claim_interface(3) failed:" << libusb_strerror(nRet);
@@ -61,11 +59,11 @@ int test(){
 
         // 向指定端点发送数据
         char sBuf[] = "1234567890";
-        int nActualBytes = 0;
-        nRet = libusb_bulk_transfer(pHandle, 0x03, (unsigned char *)sBuf, strlen(sBuf), &nActualBytes, 1000);
+        int nActualBytes =0;
+        nRet = libusb_bulk_transfer(pHandle, 0x00, (unsigned char *)sBuf, strlen(sBuf), &nActualBytes, 1000);
         if (nRet < 0)
         {
-            qDebug() << "libusb_bulk_transfer(0x03) write failed:" << libusb_strerror(nRet);
+            qDebug() << "libusb_bulk_transfer(0x03) write failed:" << libusb_strerror(nRet) << nRet;
             libusb_release_interface(pHandle, 0);
             libusb_close(pHandle);
             libusb_exit(NULL);
@@ -121,30 +119,34 @@ static int device_satus(libusb_device_handle *hd)
     return 0;
 }
 
-int HIDAPIdebugger::getDevsNum(){
-    libusb_context *ctx = NULL;
-    libusb_device** devs = nullptr; //pointer to pointer of device, used to retrieve a list of devices
-    return libusb_get_device_list(ctx, &devs);
-}
 
-libusb_device** HIDAPIdebugger::getDevsList(){
-    libusb_device **devs = nullptr; //pointer to pointer of device, used to retrieve a list of devices
-    if(libusb_get_device_list(NULL, &devs) < 0){
-        //fail to get dev list
-        return nullptr;
-    }else
-        return devs;
-}
 QString getDevInfoString(libusb_device* dev){
-    libusb_device_descriptor* dev_desc;
-    int r = libusb_get_device_descriptor(dev,dev_desc);
+    libusb_device_descriptor dev_desc;
+    int r = libusb_get_device_descriptor(dev,&dev_desc);
     if(r < 0)
         return "";
     else{
-        QString desc_str = "VID     :" + QString().asprintf("0x%x",dev_desc->idVendor);
-        desc_str +="\nPID     :" + QString().asprintf("0x%x",dev_desc->idProduct);
-        desc_str +="\nMAN     :" + QString().asprintf("%d",dev_desc->iManufacturer);
-        return desc_str;
+        QString desc_str = "";
+        desc_str +=  "Port num            :" + QString().asprintf("%d",libusb_get_port_number(dev));
+        desc_str += "\nSpeed              :" + QString().asprintf("%d",libusb_get_device_speed(dev));
+        desc_str += "\nAddress            :" + QString().asprintf("%d",libusb_get_device_address(dev));
+        desc_str += "\nBus num            :" + QString().asprintf("%d",libusb_get_bus_number(dev));
+        desc_str +="\nVID                 :" + QString().asprintf("0x%x",dev_desc.idVendor);
+        desc_str +="\nPID                 :" + QString().asprintf("0x%x",dev_desc.idProduct);
+        desc_str +="\nManufacturer        :" + QString().asprintf("%d",dev_desc.iManufacturer);
+        desc_str +="\nSerialNumber        :" + QString().asprintf("%d",dev_desc.iSerialNumber);
+        desc_str +="\nMaxPacketSize       :" + QString().asprintf("%d",dev_desc.bMaxPacketSize0);
+        desc_str +="\nNumConfigurations   :" + QString().asprintf("%d",dev_desc.bNumConfigurations);
+        //get device config list
+        QString config_str = "";
+        struct libusb_config_descriptor *dev_config_list;
+        int ret = libusb_get_config_descriptor(dev,1,&dev_config_list);
+        if(ret >= 0){
+            config_str += "\n    NumInterfaces     :"+QString::number(dev_config_list->bNumInterfaces);
+            config_str += "\n    Max power         :"+QString::number(dev_config_list->MaxPower);
+        }
+        desc_str += config_str;
+        return desc_str + "\n";
     }
 }
 
@@ -195,11 +197,16 @@ int findDevs(){
 
 }
 
+void HIDAPIdebugger::HID_test(){
+    test();
+}
+
 
 void HIDAPIdebugger::HID_enum()
 {
     libusb_device **devs_list;
     libusb_context *ctx = NULL; //a libusb session
+    QString descs = "";
 
     //init libusb
     int r = libusb_init(&ctx); //initialize the library for the session we just declared
@@ -218,7 +225,26 @@ void HIDAPIdebugger::HID_enum()
 
     //print devices
     for(int d = 0;d<dev_num;d++){
-        qDebug() << getDevInfoString(devs_list[d]);
+        descs += getDevInfoString(devs_list[d]);
     }
+
+
+    //show on textview
+    ui->tv_log->setText(ui->tv_log->toPlainText()+descs);
+
+    libusb_device_handle *dev_handle; //a device handle
+    dev_handle = libusb_open_device_with_vid_pid(ctx, 0x5131, 0x2019); //these are vendorID and productID I found for my usb device
+    if(dev_handle == NULL)
+        qDebug() <<("Cannot open device\n");
+    else
+        qDebug() <<("Device Opened\n");
+    libusb_free_device_list(devs_list, 1); //free the list, unref the devices in it
+    r = libusb_claim_interface(dev_handle, 3);
+    if(r < 0) {
+        qDebug() <<("Cannot Claim Interface\n");
+        return;
+    }
+    qDebug() <<("Claimed Interface\n");
+
 }
 

@@ -16,9 +16,7 @@ public:
     HIDAPIdebugger(QWidget *parent = nullptr);
     ~HIDAPIdebugger();
 
-    int getAllDevsNum();
-    int getDevsNum();
-    libusb_device** getDevsList();
+    void HID_test();
 private:
     Ui::HIDAPIdebugger *ui;
     void HID_enum();
